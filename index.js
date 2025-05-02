@@ -21,15 +21,22 @@ app.get("/", function(req, res) {
 app.post("/signup", logger, function(req, res) {
     const username = req.body.username
     const password = req.body.password
+    
+    // Check if user already exists
+    const existingUser = users.find(user => user.username === username);
+    if (existingUser) {
+        return res.status(400).json({
+            message: "Username already exists"
+        });
+    }
+
     users.push({
         username: username,
         password: password
     })
 
-    // we should check if a user with this username already exists
-
     res.json({
-        message: "You are signed in"
+        message: "Successfully signed up"
     })
 })
 
@@ -37,65 +44,81 @@ app.post("/signin", logger, function(req, res) {
     const username = req.body.username;
     const password = req.body.password;
 
-    let foundUser = null;
-
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].username === username && users[i].password === password) {
-            foundUser = users[i]
-        }
-    }
+    const foundUser = users.find(user => 
+        user.username === username && user.password === password
+    );
 
     if (!foundUser) {
-        res.json({
+        return res.status(401).json({
             message: "Credentials incorrect"
-        })
-        return 
-    } else {
-        const token = jwt.sign({
-            username: users[i].username
-        }, JWT_SECRET);
-        res.header("jwt", token);
-
-        res.header("random", "harkirat");
-
-        res.json({
-            token: token
-        })
+        });
     }
+
+    const token = jwt.sign({
+        username: foundUser.username
+    }, JWT_SECRET);
+    
+    res.header("jwt", token);
+    res.json({
+        token: token
+    });
 })
 
 function auth(req, res, next) {
-    const token = req.headers.token;
-    const decodedData = jwt.verify(token, JWT_SECRET);
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+            message: "No token provided. Format should be: Bearer <token>"
+        });
+    }
 
-    if (decodedData.username) {
-        // req = {status, headers...., username, password, userFirstName, random; ":123123"}
-        req.username = decodedData.username
-        next()
-    } else {
-        res.json({
-            message: "You are not logged in"
-        })
+    const token = authHeader.split(' ')[1];
+    
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.username = decoded.username;
+        next();
+    } catch (err) {
+        return res.status(401).json({
+            message: "Invalid or expired token"
+        });
     }
 }
 
 app.get("/me", logger, auth, function(req, res) {
-    // req = {status, headers...., username, password, userFirstName, random; ":123123"}
     const currentUser = req.username;
-    // const token = req.headers.token;
-    // const decodedData = jwt.verify(token, JWT_SECRET);
-    // const currentUser = decodedData.username
+    let foundUser = null;
 
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].username === currentUser) {
-            foundUser = users[i]
-        }
+    foundUser = users.find(user => user.username === currentUser);
+    
+    if (!foundUser) {
+        return res.status(404).json({
+            message: "User not found"
+        });
     }
 
     res.json({
         username: foundUser.username,
         password: foundUser.password
-    })
+    });
 })
 
-app.listen(3000);
+// Add error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({
+        message: "Something went wrong!"
+    });
+});
+
+app.listen(3000, () => {
+    console.log('Server is running on port 3000');
+});
+
+
+// Add at the top with other requires
+const cors = require('cors');
+
+// Add before your routes
+app.use(cors());

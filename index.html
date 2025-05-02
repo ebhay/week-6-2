@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth System</title>
+    <style>
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .response {
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Authentication System</h2>
+        
+        <div class="form-group">
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+        </div>
+
+        <div class="form-group">
+            <button onclick="signup()">Sign Up</button>
+            <button onclick="signin()">Sign In</button>
+            <button onclick="getMe()">Get Me</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+        <div id="responseLog"></div>
+    </div>
+
+    <script>
+        let token = '';
+
+        function logResponse(action, response) {
+            const logDiv = document.getElementById('responseLog');
+            const responseDiv = document.createElement('div');
+            responseDiv.className = 'response';
+            responseDiv.innerHTML = `<strong>${action}:</strong> ${JSON.stringify(response, null, 2)}`;
+            logDiv.insertBefore(responseDiv, logDiv.firstChild);
+        }
+
+        function clearLogs() {
+            document.getElementById('responseLog').innerHTML = '';
+        }
+
+        async function signup() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('http://localhost:3000/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                logResponse('Signup', data);
+            } catch (error) {
+                logResponse('Signup Error', error.message);
+            }
+        }
+
+        async function signin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('http://localhost:3000/signin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                token = data.token;
+                logResponse('Signin', data);
+            } catch (error) {
+                logResponse('Signin Error', error.message);
+            }
+        }
+
+        async function getMe() {
+            try {
+                const response = await fetch('http://localhost:3000/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await response.json();
+                logResponse('Get Me', data);
+            } catch (error) {
+                logResponse('Get Me Error', error.message);
+            }
+        }
+    </script>
+</body>
+</html>
